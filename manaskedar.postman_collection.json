@@ -1,0 +1,413 @@
+{
+	"info": {
+		"_postman_id": "e2ba3099-2479-43c2-bf72-de3fa8d7a123",
+		"name": "Manaskedar OTT - Secure APIs v2",
+		"description": "Entire structured API collection containing separated Movies, Shorts, Audio, and Shows modules. Verified with full JWT token-based authentication.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Authentication",
+			"item": [
+				{
+					"name": "1. Send OTP (User)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phone\": \"+919876543210\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/send-otp",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"send-otp"
+							]
+						}
+					}
+				},
+				{
+					"name": "2. Verify OTP (User Login)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phone\": \"+919876543210\",\n    \"otp\": \"1234\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/verify-otp",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"verify-otp"
+							]
+						}
+					}
+				},
+				{
+					"name": "3. Admin Login",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@manaskedar.com\",\n    \"password\": \"admin_secret_pass\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/admin-login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"admin-login"
+							]
+						}
+					}
+				},
+				{
+					"name": "4. Admin Register",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Admin Name\",\n    \"email\": \"admin@manaskedar.com\",\n    \"password\": \"admin_secret_pass\",\n    \"phone\": \"+919000000000\",\n    \"isAdmin\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/admin-register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"admin-register"
+							]
+						}
+					}
+				},
+				{
+					"name": "5. Logout",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/auth/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"logout"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "2. Admin Management (Protected)",
+			"item": [
+				{
+					"name": "Dashboard Stats",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{admin_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/admin/stats",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"stats"
+							]
+						}
+					}
+				},
+				{
+					"name": "Upload Media File",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{admin_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"upload"
+							]
+						}
+					}
+				},
+				{
+					"name": "Banners",
+					"item": [
+						{
+							"name": "POST Create Banner",
+							"request": {
+								"auth": {"type": "bearer", "bearer": [{"key": "token","value": "{{admin_token}}","type": "string"}]},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"imageUrl\": \"https://via.placeholder.com/1200x500.png\",\n    \"mediaId\": \"paste_media_object_id_here\"\n}",
+									"options": {"raw": {"language": "json"}}
+								},
+								"url": {"raw": "{{base_url}}/admin/banners","host": ["{{base_url}}"],"path": ["admin","banners"]}
+							}
+						},
+						{
+							"name": "DELETE Banner",
+							"request": {
+								"auth": {"type": "bearer","bearer": [{"key": "token","value": "{{admin_token}}","type": "string"}]},
+								"method": "DELETE",
+								"header": [],
+								"url": {"raw": "{{base_url}}/admin/banners/:id","host": ["{{base_url}}"],"path": ["admin","banners",":id"],"variable": [{"key": "id","value": "BANNER_ID"}]}
+							}
+						}
+					]
+				},
+				{
+					"name": "Movies",
+					"item": [
+						{
+							"name": "GET All Movies",
+							"request": {
+								"auth": {"type": "bearer","bearer": [{"key": "token","value": "{{admin_token}}","type": "string"}]},
+								"method": "GET",
+								"header": [],
+								"url": {"raw": "{{base_url}}/admin/movies","host": ["{{base_url}}"],"path": ["admin","movies"]}
+							}
+						},
+						{
+							"name": "POST Create Movie",
+							"request": {
+								"auth": {"type": "bearer","bearer": [{"key": "token","value": "{{admin_token}}","type": "string"}]},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"title\": \"Dark Void 2\",\n    \"imageUrl\": \"https://ik.imagekit.io/...\",\n    \"videoUrl\": \"https://ik.imagekit.io/...\",\n    \"description\": \"Awesome movie description\",\n    \"rating\": \"5.0\",\n    \"year\": \"2026\",\n    \"duration\": \"2h 10m\"\n}",
+									"options": {"raw": {"language": "json"}}
+								},
+								"url": {"raw": "{{base_url}}/admin/movies","host": ["{{base_url}}"],"path": ["admin","movies"]}
+							}
+						},
+						{
+							"name": "PUT Update Movie",
+							"request": {
+								"auth": {"type": "bearer","bearer": [{"key": "token","value": "{{admin_token}}","type": "string"}]},
+								"method": "PUT",
+								"header": [],
+								"body": {"mode": "raw","raw": "{\n    \"rating\": \"4.8\"\n}","options": {"raw": {"language": "json"}}},
+								"url": {"raw": "{{base_url}}/admin/movies/:id","host": ["{{base_url}}"],"path": ["admin","movies",":id"],"variable": [{"key": "id","value": "REPLACE_WITH_MOVIE_ID"}]}
+							}
+						},
+						{
+							"name": "DELETE Movie",
+							"request": {
+								"auth": {"type": "bearer","bearer": [{"key": "token","value": "{{admin_token}}","type": "string"}]},
+								"method": "DELETE",
+								"header": [],
+								"url": {"raw": "{{base_url}}/admin/movies/:id","host": ["{{base_url}}"],"path": ["admin","movies",":id"],"variable": [{"key": "id","value": "REPLACE_WITH_MOVIE_ID"}]}
+							}
+						}
+					]
+				},
+				{
+					"name": "Shorts",
+					"item": [
+						{
+							"name": "GET All Shorts",
+							"request": {"auth": {"type": "bearer","bearer": [{"key": "token","value": "{{admin_token}}","type": "string"}]},"method": "GET","header": [],"url": {"raw": "{{base_url}}/admin/shorts","host": ["{{base_url}}"],"path": ["admin","shorts"]}}
+						},
+						{
+							"name": "POST Create Short",
+							"request": {"auth": {"type": "bearer","bearer": [{"key": "token","value": "{{admin_token}}","type": "string"}]},"method": "POST","header": [],"body": {"mode": "raw","raw": "{\n    \"title\": \"Funny Cat Short\",\n    \"imageUrl\": \"https://ik.imagekit.io/...\",\n    \"videoUrl\": \"https://ik.imagekit.io/...\"\n}","options": {"raw": {"language": "json"}}},"url": {"raw": "{{base_url}}/admin/shorts","host": ["{{base_url}}"],"path": ["admin","shorts"]}}
+						}
+					]
+				},
+				{
+					"name": "Audio",
+					"item": [
+						{
+							"name": "GET All Audios",
+							"request": {"auth": {"type": "bearer","bearer": [{"key": "token","value": "{{admin_token}}","type": "string"}]},"method": "GET","header": [],"url": {"raw": "{{base_url}}/admin/audios","host": ["{{base_url}}"],"path": ["admin","audios"]}}
+						},
+						{
+							"name": "POST Create Audio",
+							"request": {"auth": {"type": "bearer","bearer": [{"key": "token","value": "{{admin_token}}","type": "string"}]},"method": "POST","header": [],"body": {"mode": "raw","raw": "{\n    \"title\": \"Relaxing Music\",\n    \"imageUrl\": \"https://...\",\n    \"videoUrl\": \"https://...audiofile.mp3\"\n}","options": {"raw": {"language": "json"}}},"url": {"raw": "{{base_url}}/admin/audios","host": ["{{base_url}}"],"path": ["admin","audios"]}}
+						}
+					]
+				},
+				{
+					"name": "Shows",
+					"item": [
+						{
+							"name": "GET All Shows",
+							"request": {"auth": {"type": "bearer","bearer": [{"key": "token","value": "{{admin_token}}","type": "string"}]},"method": "GET","header": [],"url": {"raw": "{{base_url}}/admin/shows","host": ["{{base_url}}"],"path": ["admin","shows"]}}
+						},
+						{
+							"name": "POST Create Show",
+							"request": {"auth": {"type": "bearer","bearer": [{"key": "token","value": "{{admin_token}}","type": "string"}]},"method": "POST","header": [],"body": {"mode": "raw","raw": "{\n    \"title\": \"Breaking Science\",\n    \"imageUrl\": \"https://...\",\n    \"videoUrl\": \"https://...\"\n}","options": {"raw": {"language": "json"}}},"url": {"raw": "{{base_url}}/admin/shows","host": ["{{base_url}}"],"path": ["admin","shows"]}}
+						}
+					]
+				},
+				{
+					"name": "Users (Admin View)",
+					"item": [
+						{
+							"name": "GET All Identities",
+							"request": {"auth": {"type": "bearer","bearer": [{"key": "token","value": "{{admin_token}}","type": "string"}]},"method": "GET","header": [],"url": {"raw": "{{base_url}}/admin/users","host": ["{{base_url}}"],"path": ["admin","users"]}}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "3. User App Fetch (Protected)",
+			"item": [
+				{
+					"name": "App Home (Banners & Categories)",
+					"item": [
+						{
+							"name": "GET Banners",
+							"request": {"auth": {"type": "bearer","bearer": [{"key": "token","value": "{{user_token}}","type": "string"}]},"method": "GET","header": [],"url": {"raw": "{{base_url}}/user/banners","host": ["{{base_url}}"],"path": ["user","banners"]}}
+						},
+						{
+							"name": "GET Categories",
+							"request": {"auth": {"type": "bearer","bearer": [{"key": "token","value": "{{user_token}}","type": "string"}]},"method": "GET","header": [],"url": {"raw": "{{base_url}}/user/categories","host": ["{{base_url}}"],"path": ["user","categories"]}}
+						}
+					]
+				},
+				{
+					"name": "Movies (User)",
+					"item": [
+						{
+							"name": "GET User Movies",
+							"request": {"auth": {"type": "bearer","bearer": [{"key": "token","value": "{{user_token}}","type": "string"}]},"method": "GET","header": [],"url": {"raw": "{{base_url}}/user/movies","host": ["{{base_url}}"],"path": ["user","movies"]}, "description": "Add ?search=query for search"}
+						},
+						{
+							"name": "GET Movie by ID",
+							"request": {"auth": {"type": "bearer","bearer": [{"key": "token","value": "{{user_token}}","type": "string"}]},"method": "GET","header": [],"url": {"raw": "{{base_url}}/user/movies/:id","host": ["{{base_url}}"],"path": ["user","movies",":id"],"variable": [{"key": "id","value": "ID"}]}}
+						}
+					]
+				},
+				{
+					"name": "Shorts (User)",
+					"item": [
+						{
+							"name": "GET User Shorts",
+							"request": {"auth": {"type": "bearer","bearer": [{"key": "token","value": "{{user_token}}","type": "string"}]},"method": "GET","header": [],"url": {"raw": "{{base_url}}/user/shorts","host": ["{{base_url}}"],"path": ["user","shorts"]}}
+						}
+					]
+				},
+				{
+					"name": "Audio (User)",
+					"item": [
+						{
+							"name": "GET User Audios",
+							"request": {"auth": {"type": "bearer","bearer": [{"key": "token","value": "{{user_token}}","type": "string"}]},"method": "GET","header": [],"url": {"raw": "{{base_url}}/user/audios","host": ["{{base_url}}"],"path": ["user","audios"]}}
+						}
+					]
+				},
+				{
+					"name": "Shows (User)",
+					"item": [
+						{
+							"name": "GET User Shows",
+							"request": {"auth": {"type": "bearer","bearer": [{"key": "token","value": "{{user_token}}","type": "string"}]},"method": "GET","header": [],"url": {"raw": "{{base_url}}/user/shows","host": ["{{base_url}}"],"path": ["user","shows"]}}
+						}
+					]
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5001/api",
+			"type": "string"
+		},
+		{
+			"key": "admin_token",
+			"value": "PASTE_ADMIN_TOKEN_HERE",
+			"type": "string"
+		},
+		{
+			"key": "user_token",
+			"value": "PASTE_USER_TOKEN_HERE",
+			"type": "string"
+		}
+	]
+}
