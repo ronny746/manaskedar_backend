@@ -114,6 +114,8 @@ exports.deleteBanner = async (req, res) => {
 
 const { s3Client, bucketName } = require('../../config/s3');
 const { Upload } = require('@aws-sdk/lib-storage');
+const sharp = require('sharp');
+const { getCdnUrl } = require('../../utils/cdnHelper');
 
 exports.uploadFile = async (req, res) => {
     try {
@@ -131,13 +133,58 @@ exports.uploadFile = async (req, res) => {
         else if (isImage) subfolder = 'images';
 
         const localPath = req.file.path;
-        const fileName = `${Date.now()}_${req.file.originalname.replace(/\s+/g, '_')}`;
+        let fileStream;
+        let contentType = req.file.mimetype;
+        let finalFileName = req.file.originalname.replace(/\s+/g, '_');
+
+        // 🖼️ AUTO-COMPRESS IMAGES WITH SHARP (WebP Conversion, 80-90% Size Reduction)
+        if (isImage) {
+            console.log(`[SHARP] Optimizing image: ${req.file.originalname}`);
+            const outputFileName = `${Date.now()}_${path.parse(finalFileName).name}.webp`;
+            const key = `manaskedar_universe/images/${outputFileName}`;
+
+            const compressedBuffer = await sharp(localPath)
+                .resize({ width: 1920, withoutEnlargement: true }) // Max 1080p width
+                .webp({ quality: 82 })                             // High clarity WebP
+                .toBuffer();
+
+            const upload = new Upload({
+                client: s3Client,
+                params: {
+                    Bucket: bucketName,
+                    Key: key,
+                    Body: compressedBuffer,
+                    ContentType: 'image/webp'
+                },
+            });
+
+            await upload.done();
+
+            if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+
+            const rawS3Url = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+            const cdnUrl = getCdnUrl(rawS3Url);
+
+            console.log(`[S3/CDN] Image uploaded successfully (WebP): ${cdnUrl}`);
+
+            return res.status(200).json({
+                message: 'Image optimized and uploaded successfully',
+                url: cdnUrl,
+                rawUrl: rawS3Url,
+                fileId: key,
+                fileType: 'image',
+                fileSize: compressedBuffer.length
+            });
+        }
+
+        // 🎥 VIDEO / AUDIO UPLOAD PIPELINE
+        const fileName = `${Date.now()}_${finalFileName}`;
         const folder = `manaskedar_universe/${subfolder}`;
         const key = `${folder}/${fileName}`;
 
         console.log(`[S3] Uploading ${req.file.mimetype} to S3: ${key}`);
 
-        const fileStream = fs.createReadStream(localPath);
+        fileStream = fs.createReadStream(localPath);
 
         const upload = new Upload({
             client: s3Client,
@@ -145,12 +192,11 @@ exports.uploadFile = async (req, res) => {
                 Bucket: bucketName,
                 Key: key,
                 Body: fileStream,
-                ContentType: req.file.mimetype,
-                // ACL: 'public-read' // Uncomment if you want the file to be public
+                ContentType: contentType
             },
         });
 
-        const uploadResponse = await upload.done();
+        await upload.done();
 
         // Cleanup local file after upload
         if (fs.existsSync(localPath)) {
@@ -158,27 +204,27 @@ exports.uploadFile = async (req, res) => {
             console.log(`[S3] Cleaned up local file: ${localPath}`);
         }
 
-        // Construct the S3 URL (assuming it's public or you have the correct bucket policy)
-        // Format: https://BUCKET_NAME.s3.REGION.amazonaws.com/KEY
-        const s3Url = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+        const rawS3Url = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+        const cdnUrl = getCdnUrl(rawS3Url);
 
         res.status(200).json({
-            message: 'Media uploaded successfully to S3',
-            url: s3Url,
+            message: 'Media uploaded successfully',
+            url: cdnUrl,
+            rawUrl: rawS3Url,
             fileId: key,
-            fileType: isVideo ? 'video' : (isAudio ? 'audio' : 'image'),
-            duration: 0, // S3 doesn't provide duration, might need a library like fluent-ffmpeg to extract it locally before upload
+            fileType: isVideo ? 'video' : (isAudio ? 'audio' : 'other'),
+            duration: 0,
             fileSize: req.file.size || 0
         });
 
     } catch (err) {
         console.error('[S3 ERROR] Upload failed:', err.message);
 
-        // Ensure local cleanup even on failure
         if (req.file && fs.existsSync(req.file.path)) {
             fs.unlinkSync(req.file.path);
         }
 
-        res.status(500).json({ error: `S3 Upload Error: ${err.message}` });
+        res.status(500).json({ error: `Upload Error: ${err.message}` });
     }
 };
+
