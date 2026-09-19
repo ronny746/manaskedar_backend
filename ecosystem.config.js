@@ -3,8 +3,8 @@ module.exports = {
     {
       name: 'manaskedar-backend',
       script: 'index.js',
-      instances: 'max',
-      exec_mode: 'cluster',
+      instances: 1,
+      exec_mode: 'fork',
       env: {
         NODE_ENV: 'development',
         PORT: 5001
