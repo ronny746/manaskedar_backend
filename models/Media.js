@@ -5,7 +5,7 @@ const mediaSchema = new mongoose.Schema({
 
     type: {
         type: String,
-        enum: ['video', 'audio', 'short'],
+        enum: ['video', 'audio', 'short', 'shorts', 'movie', 'show'],
         required: true
     },
 
@@ -13,7 +13,10 @@ const mediaSchema = new mongoose.Schema({
 
     thumbnail: String,
 
-    url: { type: String, required: true }, // S3 URL
+    url: { type: String, required: true },         // Primary streaming URL (HLS / Raw)
+    hlsUrl: { type: String },                      // Adaptive HLS playlist (.m3u8) for 0 buffering
+    originalUrl: { type: String },                 // 100% Untouched RAW Master Video file
+    bunnyVideoId: { type: String },                // Bunny Stream Video GUID
 
     duration: Number, // seconds
 

@@ -73,27 +73,6 @@ exports.updateMedia = async (req, res) => {
     }
 };
 
-exports.getUploadAuth = async (req, res) => {
-    try {
-        res.status(200).json({
-            cloud: 's3',
-            endpoint: '/api/admin/upload',
-            message: 'AWS S3 tunnel established'
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-};
-
-exports.deleteMedia = async (req, res) => {
-    try {
-        await Media.findByIdAndDelete(req.params.id);
-        res.status(200).json({ message: 'Deleted' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-};
-
 exports.createBanner = async (req, res) => {
     try {
         const banner = await Banner.create(req.body);
@@ -112,10 +91,52 @@ exports.deleteBanner = async (req, res) => {
     }
 };
 
-const { s3Client, bucketName } = require('../../config/s3');
-const { Upload } = require('@aws-sdk/lib-storage');
-const sharp = require('sharp');
-const { getCdnUrl } = require('../../utils/cdnHelper');
+const { uploadVideoToBunnyStream, createBunnyVideoEntry, deleteVideoFromBunnyStream } = require('../../utils/bunnyStreamHelper');
+
+exports.getBunnyUploadAuth = async (req, res) => {
+    try {
+        const title = req.body?.title || req.query?.title || 'video.mp4';
+        const authData = await createBunnyVideoEntry(title);
+        res.status(200).json(authData);
+    } catch (err) {
+        console.error('[BUNNY AUTH ERROR]', err.message);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.getUploadAuth = async (req, res) => {
+    try {
+        res.status(200).json({
+            cloud: 's3',
+            endpoint: '/api/admin/upload',
+            message: 'AWS S3 tunnel established'
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.deleteMedia = async (req, res) => {
+    try {
+        const media = await Media.findById(req.params.id);
+        if (media) {
+            // If media was hosted on Bunny Stream, delete from library
+            if (media.bunnyVideoId) {
+                await deleteVideoFromBunnyStream(media.bunnyVideoId);
+            } else if (media.url && media.url.includes('b-cdn.net')) {
+                const parts = media.url.split('/');
+                const guidIndex = parts.findIndex(p => p.includes('b-cdn.net')) + 1;
+                if (guidIndex > 0 && parts[guidIndex]) {
+                    await deleteVideoFromBunnyStream(parts[guidIndex]);
+                }
+            }
+            await Media.findByIdAndDelete(req.params.id);
+        }
+        res.status(200).json({ message: 'Media deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
 
 exports.uploadFile = async (req, res) => {
     try {
@@ -127,17 +148,44 @@ exports.uploadFile = async (req, res) => {
         const isAudio = req.file.mimetype.startsWith('audio/');
         const isImage = req.file.mimetype.startsWith('image/');
 
-        let subfolder = 'others';
-        if (isVideo) subfolder = 'videos';
-        else if (isAudio) subfolder = 'audios';
-        else if (isImage) subfolder = 'images';
-
         const localPath = req.file.path;
-        let fileStream;
-        let contentType = req.file.mimetype;
         let finalFileName = req.file.originalname.replace(/\s+/g, '_');
 
-        // 🖼️ AUTO-COMPRESS IMAGES WITH SHARP (WebP Conversion, 80-90% Size Reduction)
+        // 🚀 PIPELINE 1: BUNNY STREAM FOR VIDEOS (Zero Buffering, Adaptive Bitrate HLS, No Quality Loss)
+        if (isVideo && process.env.BUNNY_STREAM_API_KEY) {
+            try {
+                console.log(`[BUNNY STREAM] Ingesting video without quality degradation: ${req.file.originalname}`);
+                const bunnyResult = await uploadVideoToBunnyStream(localPath, finalFileName);
+
+                // Clean up local file after upload
+                if (fs.existsSync(localPath)) {
+                    fs.unlinkSync(localPath);
+                }
+
+                return res.status(200).json({
+                    message: 'Video uploaded and processed for high-speed streaming',
+                    url: bunnyResult.hlsUrl,                    // Adaptive HLS playlist (.m3u8)
+                    hlsUrl: bunnyResult.hlsUrl,                // Adaptive Bitrate Stream
+                    originalUrl: bunnyResult.originalUrl,      // 100% Untouched RAW Master Video File
+                    directUrl: bunnyResult.hlsUrl,
+                    fallbackUrl: bunnyResult.mp4_1080p || bunnyResult.mp4Url,
+                    mp4_1080p: bunnyResult.mp4_1080p,
+                    mp4Url: bunnyResult.mp4Url,
+                    thumbnail: bunnyResult.thumbnailUrl,
+                    previewUrl: bunnyResult.previewUrl,
+                    fileId: bunnyResult.guid,
+                    bunnyVideoId: bunnyResult.guid,
+                    fileType: 'video',
+                    fileSize: bunnyResult.fileSize || req.file.size || 0,
+                    provider: 'bunny_stream'
+                });
+            } catch (bunnyErr) {
+                console.error('[BUNNY STREAM ERROR] Video upload failed, attempting S3 fallback:', bunnyErr.message);
+                // If Bunny upload fails, continue down to S3 fallback
+            }
+        }
+
+        // 🖼️ PIPELINE 2: AUTO-COMPRESS IMAGES WITH SHARP (WebP Conversion, 80-90% Size Reduction)
         if (isImage) {
             console.log(`[SHARP] Optimizing image: ${req.file.originalname}`);
             const outputFileName = `${Date.now()}_${path.parse(finalFileName).name}.webp`;
@@ -177,14 +225,18 @@ exports.uploadFile = async (req, res) => {
             });
         }
 
-        // 🎥 VIDEO / AUDIO UPLOAD PIPELINE
+        // ☁️ PIPELINE 3: AWS S3 FOR AUDIO / FALLBACK STORAGE
+        let subfolder = 'others';
+        if (isVideo) subfolder = 'videos';
+        else if (isAudio) subfolder = 'audios';
+
         const fileName = `${Date.now()}_${finalFileName}`;
         const folder = `manaskedar_universe/${subfolder}`;
         const key = `${folder}/${fileName}`;
 
         console.log(`[S3] Uploading ${req.file.mimetype} to S3: ${key}`);
 
-        fileStream = fs.createReadStream(localPath);
+        const fileStream = fs.createReadStream(localPath);
 
         const upload = new Upload({
             client: s3Client,
@@ -192,7 +244,7 @@ exports.uploadFile = async (req, res) => {
                 Bucket: bucketName,
                 Key: key,
                 Body: fileStream,
-                ContentType: contentType
+                ContentType: req.file.mimetype
             },
         });
 
@@ -218,7 +270,7 @@ exports.uploadFile = async (req, res) => {
         });
 
     } catch (err) {
-        console.error('[S3 ERROR] Upload failed:', err.message);
+        console.error('[UPLOAD ERROR] Upload failed:', err.message);
 
         if (req.file && fs.existsSync(req.file.path)) {
             fs.unlinkSync(req.file.path);

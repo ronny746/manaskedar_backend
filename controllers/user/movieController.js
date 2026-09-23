@@ -5,7 +5,7 @@ const { enrichMediaWithUserData, enrichSingleMediaWithUserData } = require('../.
 exports.getMovies = async (req, res) => {
     try {
         const { search } = req.query;
-        let filter = { type: 'movie' };
+        let filter = { type: { $in: ['movie', 'video'] } };
         if (search) {
             filter.title = { $regex: search, $options: 'i' };
         }
@@ -20,7 +20,7 @@ exports.getMovies = async (req, res) => {
 // Get a single movie by ID
 exports.getMovieById = async (req, res) => {
     try {
-        const movie = await Media.findOne({ _id: req.params.id, type: 'movie' });
+        const movie = await Media.findOne({ _id: req.params.id, type: { $in: ['movie', 'video'] } });
         if (!movie) return res.status(404).json({ error: 'Movie not found' });
         const enriched = await enrichSingleMediaWithUserData(movie, req.user?.id);
         res.status(200).json(enriched);

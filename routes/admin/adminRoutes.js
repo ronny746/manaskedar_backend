@@ -34,6 +34,7 @@ const userMgmtCtrl = require('../../controllers/admin/userManagementController')
 const settingCtrl = require('../../controllers/admin/settingController');
 
 router.get('/upload-auth', adminCtrl.getUploadAuth);
+router.post('/bunny-upload-auth', adminCtrl.getBunnyUploadAuth);
 router.post('/upload', upload.single('file'), adminCtrl.uploadFile);
 router.get('/stats', adminCtrl.getDashboardStats);
 

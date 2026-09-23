@@ -72,40 +72,51 @@ exports.getHomeData = async (req, res) => {
                 items: s.items.map(m => {
                     const item = (typeof m.toObject === 'function') ? m.toObject() : m;
                     const mapped = {
-                        id: item._id.toString(),
-                        title: item.title,
-                        imageUrl: item.thumbnail || '',
-                        videoUrl: item.url || '',
-                        type: item.type
+                        id: item._id ? item._id.toString() : (item.id || ''),
+                        title: item.title || '',
+                        imageUrl: item.thumbnail || item.imageUrl || '',
+                        videoUrl: item.hlsUrl || item.url || item.videoUrl || '',
+                        type: item.type || 'video',
+                        description: item.description || '',
+                        category: item.category || [],
+                        duration: item.duration || 0,
+                        isPremium: Boolean(item.isPremium),
+                        language: item.language || 'Hindi',
+                        tags: item.tags || [],
+                        likesCount: Array.isArray(item.likes) ? item.likes.length : (item.likesCount || 0),
+                        views: item.views || 0,
+                        shares: item.shares || 0,
+                        commentsCount: item.commentsCount || 0,
+                        rating: item.rating || '4.5',
+                        publishingYear: item.publishingYear || '2024',
                     };
 
-                    if (item.type === 'video') {
-                        return { ...item, ...mapped };
-                    }
-                    return mapped;
+                    return { ...item, ...mapped };
                 })
             }));
 
         res.status(200).json({
             banners: banners.map(b => {
-                const bj = b.toObject();
+                const bj = (typeof b.toObject === 'function') ? b.toObject() : b;
                 if (bj.mediaId) {
-                    const media = bj.mediaId;
-                    const mediaIdStr = media._id.toString();
+                    const media = (typeof bj.mediaId.toObject === 'function') ? bj.mediaId.toObject() : bj.mediaId;
+                    const mediaIdStr = media._id ? media._id.toString() : (media.id || '');
                     
                     const mapped = {
                         id: mediaIdStr,
-                        title: media.title,
+                        title: media.title || '',
                         imageUrl: bj.imageUrl || media.thumbnail || '',
-                        videoUrl: media.url || '',
-                        type: media.type
+                        videoUrl: media.hlsUrl || media.url || '',
+                        type: media.type || 'video',
+                        description: media.description || '',
+                        category: media.category || [],
+                        duration: media.duration || 0,
+                        isPremium: Boolean(media.isPremium),
+                        rating: media.rating || '4.5',
+                        publishingYear: media.publishingYear || '2024',
                     };
 
-                    // Even for banners, if it's a video, send full data
-                    if (media.type === 'video') {
-                        return { ...bj, mediaId: { ...media, ...mapped } };
-                    }
-                    return { ...bj, mediaId: mapped };
+                    return { ...bj, mediaId: { ...media, ...mapped } };
                 }
                 return bj;
             }),
@@ -121,26 +132,27 @@ exports.getMedia = async (req, res) => {
     try {
         const { type, search } = req.query;
         let filter = {};
-        if (type) filter.type = type;
+        if (type) {
+            if (type === 'video' || type === 'movie') filter.type = { $in: ['video', 'movie'] };
+            else if (type === 'short' || type === 'shorts') filter.type = { $in: ['short', 'shorts'] };
+            else filter.type = type;
+        }
         if (search) {
             filter.title = { $regex: search, $options: 'i' };
         }
         
-        const media = await Media.find(filter);
+        const media = await Media.find(filter).sort('-createdAt');
         const mappedMedia = media.map(m => {
-            const item = m.toObject();
+            const item = (typeof m.toObject === 'function') ? m.toObject() : m;
             const mapped = {
                 id: item._id.toString(),
                 title: item.title,
                 imageUrl: item.thumbnail || '',
-                videoUrl: item.url || '',
+                videoUrl: item.hlsUrl || item.url || '',
                 type: item.type
             };
 
-            if (item.type === 'video') {
-                return { ...item, ...mapped };
-            }
-            return mapped;
+            return { ...item, ...mapped };
         });
         res.status(200).json(mappedMedia);
     } catch (err) {

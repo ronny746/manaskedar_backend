@@ -5,7 +5,7 @@ const { enrichMediaWithUserData } = require('../../utils/mediaHelper');
 exports.getShows = async (req, res) => {
     try {
         const { search } = req.query;
-        let filter = { type: 'show' };
+        let filter = { type: { $in: ['show', 'shows'] } };
         if (search) {
             filter.title = { $regex: search, $options: 'i' };
         }
@@ -20,7 +20,7 @@ exports.getShows = async (req, res) => {
 // Get a single show by ID
 exports.getShowById = async (req, res) => {
     try {
-        const show = await Media.findOne({ _id: req.params.id, type: 'show' });
+        const show = await Media.findOne({ _id: req.params.id, type: { $in: ['show', 'shows'] } });
         if (!show) return res.status(404).json({ error: 'Show not found' });
         res.status(200).json(show);
     } catch (err) {
