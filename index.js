@@ -18,11 +18,27 @@ const connectDB = require('./config/db');
 connectDB();
 
 const app = express();
+
+// 🌐 UNIVERSAL CORS CONFIGURATION (Full Preflight & Origin Support)
 app.use(cors({
-    origin: '*', // Allow all for now to solve connection issues, or specify your IP
+    origin: true, // Reflect request origin
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 }));
+
+// Explicit Preflight Middleware
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-auth-token');
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    next();
+});
+
 app.use(express.json());
 
 // 📝 REQUEST LOGGER (For Divine Monitoring)
