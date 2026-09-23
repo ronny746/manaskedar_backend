@@ -1,18 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const notificationController = require('../../controllers/user/notificationController');
-const authMiddleware = require('../../middleware/authMiddleware');
+const { protect, optionalProtect } = require('../../middleware/auth');
 
-// Optional auth for notifications
-router.get('/', (req, res, next) => {
-    // try auth if token exists, else continue
-    const authHeader = req.headers['authorization'];
-    if (authHeader) {
-        return authMiddleware(req, res, next);
-    }
-    next();
-}, notificationController.getNotifications);
+// Optional auth for fetching notifications
+router.get('/', optionalProtect, notificationController.getNotifications);
 
-router.post('/register-token', authMiddleware, notificationController.registerFcmToken);
+// Register FCM token (optional or protected)
+router.post('/register-token', optionalProtect, notificationController.registerFcmToken);
 
 module.exports = router;
