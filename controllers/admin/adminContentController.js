@@ -54,10 +54,31 @@ exports.getMediaById = async (req, res) => {
     }
 };
 
+const { sendNotification } = require('../../utils/notificationHelper');
+
 // Media CRUD
 exports.createMedia = async (req, res) => {
     try {
         const media = await Media.create(req.body);
+
+        // Check if Admin requested Push Notification to users
+        if (req.body.notifyUsers === true || req.body.notifyUsers === 'true') {
+            const mediaType = media.type || 'movie';
+            let route = '/details';
+            if (mediaType === 'short' || mediaType === 'shorts') route = '/shorts';
+            else if (mediaType === 'audio') route = '/audio';
+
+            const typeLabel = mediaType.toUpperCase();
+            await sendNotification({
+                title: `✨ New ${typeLabel}: ${media.title}`,
+                body: media.description ? media.description.substring(0, 100) + '...' : `Watch ${media.title} now on Manas Kedar.`,
+                imageUrl: media.thumbnail || '',
+                mediaId: media._id,
+                mediaType: mediaType,
+                route: route
+            });
+        }
+
         res.status(201).json(media);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -67,6 +88,23 @@ exports.createMedia = async (req, res) => {
 exports.updateMedia = async (req, res) => {
     try {
         const media = await Media.findByIdAndUpdate(req.params.id, req.body, { returnDocument: 'after' });
+
+        if (req.body.notifyUsers === true || req.body.notifyUsers === 'true') {
+            const mediaType = media?.type || 'movie';
+            let route = '/details';
+            if (mediaType === 'short' || mediaType === 'shorts') route = '/shorts';
+            else if (mediaType === 'audio') route = '/audio';
+
+            await sendNotification({
+                title: `🔥 Updated: ${media.title}`,
+                body: `Check out the latest updates for ${media.title}!`,
+                imageUrl: media.thumbnail || '',
+                mediaId: media._id,
+                mediaType: mediaType,
+                route: route
+            });
+        }
+
         res.status(200).json(media);
     } catch (err) {
         res.status(500).json({ error: err.message });

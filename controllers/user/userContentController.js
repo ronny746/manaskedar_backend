@@ -52,11 +52,7 @@ exports.getHomeData = async (req, res) => {
                 subtitle: 'divine_cinema', 
                 items: videos 
             },
-            { 
-               title: 'ansh_shorts', 
-               subtitle: 'divine_spark', 
-               items: shorts 
-            },
+
             { 
                 title: 'nada_audio', 
                 subtitle: 'divine_sound', 

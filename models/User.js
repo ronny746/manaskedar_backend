@@ -18,6 +18,8 @@ const userSchema = new mongoose.Schema({
     isPremium: { type: Boolean, default: false },
     lastActive: { type: Date, default: Date.now },
     sessions: [sessionSchema], // Track up to 3 sessions
+    fcmToken: { type: String, default: '' },
+    fcmTokens: [{ type: String }],
     favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Media' }],
     watchHistory: [{
         media: { type: mongoose.Schema.Types.ObjectId, ref: 'Media' },

@@ -86,8 +86,10 @@ app.use('/api/admin/audio', audioRoutes);
 app.use('/api/admin/assets', assetRoutes);
 
 // User/Auth Routes
+const notificationRoutes = require('./routes/user/notificationRoutes');
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/user/notifications', notificationRoutes);
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => { });
