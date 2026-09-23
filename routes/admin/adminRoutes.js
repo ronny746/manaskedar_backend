@@ -37,6 +37,7 @@ router.get('/upload-auth', adminCtrl.getUploadAuth);
 router.post('/bunny-upload-auth', adminCtrl.getBunnyUploadAuth);
 router.post('/upload', upload.single('file'), adminCtrl.uploadFile);
 router.get('/stats', adminCtrl.getDashboardStats);
+router.post('/notifications/broadcast', adminCtrl.sendBroadcastNotification);
 
 // User Management
 router.get('/users', userMgmtCtrl.getAllUsers);

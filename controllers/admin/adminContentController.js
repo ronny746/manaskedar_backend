@@ -111,6 +111,33 @@ exports.updateMedia = async (req, res) => {
     }
 };
 
+// Broadcast Custom Notification
+exports.sendBroadcastNotification = async (req, res) => {
+    try {
+        const { title, body, imageUrl, route, mediaId, mediaType, targetUrl } = req.body;
+        if (!title || !body) {
+            return res.status(400).json({ error: 'Title and body are required' });
+        }
+
+        const notification = await sendNotification({
+            title,
+            body,
+            imageUrl: imageUrl || '',
+            route: route || '/details',
+            mediaId: mediaId || null,
+            mediaType: mediaType || 'movie',
+            targetUrl: targetUrl || ''
+        });
+
+        res.status(200).json({
+            message: 'Broadcast notification sent successfully',
+            notification
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
 exports.createBanner = async (req, res) => {
     try {
         const banner = await Banner.create(req.body);
