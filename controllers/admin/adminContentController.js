@@ -7,6 +7,17 @@ const { exec } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
 
+const { Upload } = require('@aws-sdk/lib-storage');
+const { s3Client, bucketName } = require('../../config/s3');
+const sharp = require('sharp');
+
+const getCdnUrl = (s3Url) => {
+    if (process.env.CLOUDFRONT_URL && s3Url) {
+        return s3Url.replace(/https:\/\/[^/]+/, process.env.CLOUDFRONT_URL);
+    }
+    return s3Url;
+};
+
 // Admin Analytics
 exports.getDashboardStats = async (req, res) => {
     try {
@@ -252,45 +263,82 @@ exports.uploadFile = async (req, res) => {
 
         // 🖼️ PIPELINE 2: AUTO-COMPRESS IMAGES WITH SHARP (WebP Conversion, 80-90% Size Reduction)
         if (isImage) {
-            console.log(`[SHARP] Optimizing image: ${req.file.originalname}`);
-            const outputFileName = `${Date.now()}_${path.parse(finalFileName).name}.webp`;
-            const key = `manaskedar_universe/images/${outputFileName}`;
+            try {
+                console.log(`[SHARP] Optimizing image: ${req.file.originalname}`);
+                const outputFileName = `${Date.now()}_${path.parse(finalFileName).name.replace(/[^a-zA-Z0-9_-]/g, '')}.webp`;
+                const key = `manaskedar_universe/images/${outputFileName}`;
 
-            const compressedBuffer = await sharp(localPath)
-                .resize({ width: 1920, withoutEnlargement: true }) // Max 1080p width
-                .webp({ quality: 82 })                             // High clarity WebP
-                .toBuffer();
+                let compressedBuffer;
+                try {
+                    compressedBuffer = await sharp(localPath)
+                        .resize({ width: 1920, withoutEnlargement: true })
+                        .webp({ quality: 82 })
+                        .toBuffer();
+                } catch (sharpErr) {
+                    console.log('[SHARP WARNING] Sharp compression fallback:', sharpErr.message);
+                    compressedBuffer = fs.readFileSync(localPath);
+                }
 
-            const upload = new Upload({
-                client: s3Client,
-                params: {
-                    Bucket: bucketName,
-                    Key: key,
-                    Body: compressedBuffer,
-                    ContentType: 'image/webp'
-                },
-            });
+                let cdnUrl = '';
+                if (process.env.AWS_ACCESS_KEY_ID && bucketName && bucketName !== 'your-bucket-name') {
+                    try {
+                        const upload = new Upload({
+                            client: s3Client,
+                            params: {
+                                Bucket: bucketName,
+                                Key: key,
+                                Body: compressedBuffer,
+                                ContentType: 'image/webp'
+                            },
+                        });
+                        await upload.done();
+                        const rawS3Url = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+                        cdnUrl = getCdnUrl(rawS3Url);
+                    } catch (s3Err) {
+                        console.error('[S3 UPLOAD WARNING] S3 failed, using local disk fallback:', s3Err.message);
+                    }
+                }
 
-            await upload.done();
+                if (!cdnUrl) {
+                    const uploadsDir = path.join(__dirname, '../../uploads');
+                    if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+                    const localFilePath = path.join(uploadsDir, outputFileName);
+                    fs.writeFileSync(localFilePath, compressedBuffer);
+                    cdnUrl = `https://back.manaskedar.com/uploads/${outputFileName}`;
+                }
 
-            if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+                if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
 
-            const rawS3Url = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
-            const cdnUrl = getCdnUrl(rawS3Url);
+                console.log(`[IMAGE UPLOAD] Photo saved successfully: ${cdnUrl}`);
 
-            console.log(`[S3/CDN] Image uploaded successfully (WebP): ${cdnUrl}`);
-
-            return res.status(200).json({
-                message: 'Image optimized and uploaded successfully',
-                url: cdnUrl,
-                rawUrl: rawS3Url,
-                fileId: key,
-                fileType: 'image',
-                fileSize: compressedBuffer.length
-            });
+                return res.status(200).json({
+                    message: 'Image optimized and uploaded successfully',
+                    url: cdnUrl,
+                    rawUrl: cdnUrl,
+                    fileId: key,
+                    fileType: 'image',
+                    fileSize: compressedBuffer.length
+                });
+            } catch (imageErr) {
+                console.error('[IMAGE UPLOAD ERROR]:', imageErr.message);
+                const fallbackFileName = `${Date.now()}_${path.basename(localPath)}`;
+                const uploadsDir = path.join(__dirname, '../../uploads');
+                if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+                if (fs.existsSync(localPath)) {
+                    fs.copyFileSync(localPath, path.join(uploadsDir, fallbackFileName));
+                    fs.unlinkSync(localPath);
+                }
+                const localUrl = `https://back.manaskedar.com/uploads/${fallbackFileName}`;
+                return res.status(200).json({
+                    message: 'Image uploaded to local storage',
+                    url: localUrl,
+                    fileType: 'image',
+                    fileSize: req.file ? req.file.size : 0
+                });
+            }
         }
 
-        // ☁️ PIPELINE 3: AWS S3 FOR AUDIO / FALLBACK STORAGE
+        // ☁️ PIPELINE 3: AWS S3 FOR AUDIO / GENERAL MEDIA (With Local Disk Fallback)
         let subfolder = 'others';
         if (isVideo) subfolder = 'videos';
         else if (isAudio) subfolder = 'audios';
@@ -299,35 +347,45 @@ exports.uploadFile = async (req, res) => {
         const folder = `manaskedar_universe/${subfolder}`;
         const key = `${folder}/${fileName}`;
 
-        console.log(`[S3] Uploading ${req.file.mimetype} to S3: ${key}`);
+        let cdnUrl = '';
 
-        const fileStream = fs.createReadStream(localPath);
-
-        const upload = new Upload({
-            client: s3Client,
-            params: {
-                Bucket: bucketName,
-                Key: key,
-                Body: fileStream,
-                ContentType: req.file.mimetype
-            },
-        });
-
-        await upload.done();
-
-        // Cleanup local file after upload
-        if (fs.existsSync(localPath)) {
-            fs.unlinkSync(localPath);
-            console.log(`[S3] Cleaned up local file: ${localPath}`);
+        if (process.env.AWS_ACCESS_KEY_ID && bucketName && bucketName !== 'your-bucket-name') {
+            try {
+                console.log(`[S3] Uploading ${req.file.mimetype} to S3: ${key}`);
+                const fileStream = fs.createReadStream(localPath);
+                const upload = new Upload({
+                    client: s3Client,
+                    params: {
+                        Bucket: bucketName,
+                        Key: key,
+                        Body: fileStream,
+                        ContentType: req.file.mimetype
+                    },
+                });
+                await upload.done();
+                const rawS3Url = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+                cdnUrl = getCdnUrl(rawS3Url);
+                if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+            } catch (s3Err) {
+                console.error('[S3 UPLOAD WARNING] S3 upload failed, falling back to local disk:', s3Err.message);
+            }
         }
 
-        const rawS3Url = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
-        const cdnUrl = getCdnUrl(rawS3Url);
+        if (!cdnUrl) {
+            const uploadsDir = path.join(__dirname, '../../uploads');
+            if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+            const localFilePath = path.join(uploadsDir, fileName);
+            if (fs.existsSync(localPath)) {
+                fs.copyFileSync(localPath, localFilePath);
+                fs.unlinkSync(localPath);
+            }
+            cdnUrl = `https://back.manaskedar.com/uploads/${fileName}`;
+        }
 
-        res.status(200).json({
+        return res.status(200).json({
             message: 'Media uploaded successfully',
             url: cdnUrl,
-            rawUrl: rawS3Url,
+            rawUrl: cdnUrl,
             fileId: key,
             fileType: isVideo ? 'video' : (isAudio ? 'audio' : 'other'),
             duration: 0,

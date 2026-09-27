@@ -101,6 +101,87 @@ app.use('/api/admin/shorts', shortsRoutes);
 app.use('/api/admin/audio', audioRoutes);
 app.use('/api/admin/assets', assetRoutes);
 
+// Public Web Pages (Terms & Privacy Policy)
+app.get('/terms', (req, res) => {
+    res.setHeader('Content-Type', 'text/html');
+    res.send(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Terms & Conditions - Manaskedar</title>
+            <style>
+                body { background: #07070B; color: #E0E0E0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+                h1 { color: #D4AF37; font-size: 24px; margin-bottom: 8px; }
+                h2 { color: #D4AF37; font-size: 16px; margin-top: 20px; }
+                p, li { color: #CCCCCC; font-size: 14px; }
+                .date { color: #888888; font-size: 12px; margin-bottom: 24px; }
+                .card { background: rgba(255,255,255,0.04); border: 1px solid rgba(212,175,55,0.2); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+            </style>
+        </head>
+        <body>
+            <h1>MANASKEDAR TERMS OF SERVICE</h1>
+            <div class="date">Last Updated: September 2026</div>
+            <div class="card">
+                <h2>1. Acceptance of Terms</h2>
+                <p>By downloading, accessing, or using the Manaskedar mobile application, you agree to be bound by these Terms and Conditions.</p>
+            </div>
+            <div class="card">
+                <h2>2. Devotional Content License</h2>
+                <p>All spiritual audiobooks, video discourses, and music on Manaskedar are protected by copyright law for personal non-commercial listening.</p>
+            </div>
+            <div class="card">
+                <h2>3. User Account Responsibility</h2>
+                <p>Accounts are verified via mobile OTP. You are responsible for keeping your device session and credentials secure.</p>
+            </div>
+            <div class="card">
+                <h2>4. Offline Media & Encryption</h2>
+                <p>Downloaded media is encrypted strictly for playback inside the official app. Any copying or extraction is prohibited.</p>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
+app.get('/privacy', (req, res) => {
+    res.setHeader('Content-Type', 'text/html');
+    res.send(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Privacy Policy - Manaskedar</title>
+            <style>
+                body { background: #07070B; color: #E0E0E0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+                h1 { color: #D4AF37; font-size: 24px; margin-bottom: 8px; }
+                h2 { color: #D4AF37; font-size: 16px; margin-top: 20px; }
+                p, li { color: #CCCCCC; font-size: 14px; }
+                .date { color: #888888; font-size: 12px; margin-bottom: 24px; }
+                .card { background: rgba(255,255,255,0.04); border: 1px solid rgba(212,175,55,0.2); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+            </style>
+        </head>
+        <body>
+            <h1>PRIVACY POLICY - MANASKEDAR</h1>
+            <div class="date">Last Updated: September 2026</div>
+            <div class="card">
+                <h2>1. Information Collection</h2>
+                <p>We collect your mobile phone number for OTP login, and optional profile details (Name, City) to personalize your experience.</p>
+            </div>
+            <div class="card">
+                <h2>2. How We Use Data</h2>
+                <p>Data is used exclusively for authentication, progress tracking, high-speed media streaming, and optional notifications.</p>
+            </div>
+            <div class="card">
+                <h2>3. Data Protection</h2>
+                <p>We do not share, sell, or rent your profile data to third-party advertisers or external data brokers.</p>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
 // User/Auth Routes
 const notificationRoutes = require('./routes/user/notificationRoutes');
 app.use('/api/auth', authRoutes);
