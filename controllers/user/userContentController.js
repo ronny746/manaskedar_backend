@@ -72,6 +72,8 @@ exports.getHomeData = async (req, res) => {
                         title: item.title || '',
                         imageUrl: item.thumbnail || item.imageUrl || '',
                         videoUrl: item.hlsUrl || item.url || item.videoUrl || '',
+                        mp4Url: item.originalUrl || (item.url && !item.url.endsWith('.m3u8') ? item.url : '') || item.videoUrl || '',
+                        downloadUrl: item.originalUrl || (item.url && !item.url.endsWith('.m3u8') ? item.url : '') || '',
                         type: item.type || 'video',
                         description: item.description || '',
                         category: item.category || [],
@@ -103,6 +105,8 @@ exports.getHomeData = async (req, res) => {
                         title: media.title || '',
                         imageUrl: bj.imageUrl || media.thumbnail || '',
                         videoUrl: media.hlsUrl || media.url || '',
+                        mp4Url: media.originalUrl || (media.url && !media.url.endsWith('.m3u8') ? media.url : '') || '',
+                        downloadUrl: media.originalUrl || (media.url && !media.url.endsWith('.m3u8') ? media.url : '') || '',
                         type: media.type || 'video',
                         description: media.description || '',
                         category: media.category || [],
@@ -171,11 +175,14 @@ exports.getMedia = async (req, res) => {
                 title: item.title,
                 imageUrl: item.thumbnail || '',
                 videoUrl: item.hlsUrl || item.url || '',
+                mp4Url: item.originalUrl || (item.url && !item.url.endsWith('.m3u8') ? item.url : '') || '',
+                downloadUrl: item.originalUrl || (item.url && !item.url.endsWith('.m3u8') ? item.url : '') || '',
                 type: item.type
             };
 
             return { ...item, ...mapped };
         });
+
         res.status(200).json(mappedMedia);
     } catch (err) {
         res.status(500).json({ error: err.message });
