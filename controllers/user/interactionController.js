@@ -16,7 +16,13 @@ exports.toggleLike = async (req, res) => {
         }
         await media.save();
 
-        res.status(200).json({ message: 'Like updated', likesCount: media.likes.length, isLiked: likeIndex === -1 });
+        // Return likes array so Flutter can update isLikedByMe correctly
+        res.status(200).json({
+            message: 'Like updated',
+            likesCount: media.likes.length,
+            likes: media.likes.map(id => id.toString()),
+            isLiked: likeIndex === -1
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -25,7 +31,11 @@ exports.toggleLike = async (req, res) => {
 exports.incrementShare = async (req, res) => {
     try {
         const { mediaId } = req.params;
-        const media = await Media.findByIdAndUpdate(mediaId, { $inc: { shares: 1 } }, { returnDocument: 'after' });
+        const media = await Media.findByIdAndUpdate(
+            mediaId,
+            { $inc: { shares: 1 } },
+            { new: true }  // Use 'new: true' for Mongoose compatibility
+        );
         if (!media) return res.status(404).json({ error: 'Media not found' });
         res.status(200).json({ shares: media.shares });
     } catch (err) {

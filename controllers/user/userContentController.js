@@ -114,12 +114,38 @@ exports.getHomeData = async (req, res) => {
 
                     return { ...bj, mediaId: { ...media, ...mapped } };
                 }
-                return bj;
+                // Fallback for banners without linked media
+                return {
+                    ...bj,
+                    mediaId: {
+                        id: bj._id ? bj._id.toString() : '',
+                        title: 'Manas Kedar Special',
+                        imageUrl: bj.imageUrl || '',
+                        videoUrl: '',
+                        type: 'video',
+                        description: '',
+                        category: [],
+                        duration: 0,
+                        isPremium: false,
+                        rating: '4.5',
+                        publishingYear: '2024',
+                    }
+                };
             }),
             sections: finalSections
         });
     } catch (err) {
         console.error('Home Data Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.getCategories = async (req, res) => {
+    try {
+        const categories = await Media.distinct('category');
+        const formatted = categories.filter(Boolean).map(c => ({ name: c, title: c }));
+        res.status(200).json(formatted);
+    } catch (err) {
         res.status(500).json({ error: err.message });
     }
 };

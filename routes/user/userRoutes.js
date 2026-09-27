@@ -10,6 +10,7 @@ router.use(protect);
 // User content
 router.get('/home', userCtrl.getHomeData);
 router.get('/banners', userCtrl.getBanners);
+router.get('/categories', userCtrl.getCategories);
 router.get('/media', userCtrl.getMedia);
 router.get('/settings', userSettingCtrl.getSettings);
 
